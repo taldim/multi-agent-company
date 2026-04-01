@@ -16,11 +16,11 @@ You can spawn any role as a **background sub-agent** (`run_in_background: true`)
 
 | Role | Use When You Need To... |
 |------|------------------------|
-| **Documenter** | Understand what's documented — GDD, Technical, Test docs. "What behaviors are documented for monsters?" |
-| **Tester** | Know what tests exist and what they cover. "What test classes exist for WeedMommy? What do they verify?" |
-| **Implementer** | Understand code structure and patterns. "How are monster behaviors implemented? What's the public API?" |
+| **Documenter** | Understand what's documented — GDD, Technical, Test docs. "What behaviors are documented for the auth module?" |
+| **Tester** | Know what tests exist and what they cover. "What test classes exist for LoginFlow? What do they verify?" |
+| **Implementer** | Understand code structure and patterns. "How is session management implemented? What's the public API?" |
 | **Debugger** | Analyze failures or errors. "These tests are failing — what's the root cause?" |
-| **Task Manager** | Decompose a sub-problem. "Plan the monster module's changes — here's the context and design decisions." |
+| **Task Manager** | Decompose a sub-problem. "Plan the auth module's changes — here's the context and design decisions." |
 
 ### How to Spawn a Role Agent
 
@@ -112,7 +112,7 @@ Phase 4: Review — Optimizer + Visionary
 5. **NEVER paste role file contents into agent prompts** — workers self-bootstrap by reading their own role file. This keeps prompts small and your context lean.
 
 **Example violation**: Running tests from the planning session. Pasting the full content of `documenter.md` into an agent prompt.
-**Example correct**: Writing "Phase 1: Run all monster unit + integration tests" in the blueprint. Spawning a Tester with "Read your role at `Company/roles/tester.md`..."
+**Example correct**: Writing "Phase 1: Run all auth unit + integration tests" in the blueprint. Spawning a Tester with "Read your role at `Company/roles/tester.md`..."
 
 ### Autonomy Principle: Decide, Don't Ask
 
@@ -185,7 +185,7 @@ Choose the right template based on the pipeline type identified in Step 0.5.
 Your job is to SCOPE, not EXECUTE. The Manager runs tests, the Debugger diagnoses, the Implementer/Tester fix. You create the blueprint.
 
 **Step 4 for Debug Pipelines:**
-1. **Determine test scope** from the Tester agent's report (Step 1c) — list exact unit test and integration test class names. When the user says "all X tests," include adjacent test classes that test X infrastructure (e.g., monster audio, monster movement).
+1. **Determine test scope** from the Tester agent's report (Step 1c) — list exact unit test and integration test class names. When the user says "all X tests," include adjacent test classes that test X infrastructure (e.g., X audio, X movement).
 2. **State scope assumptions** in the blueprint — do NOT ask the user to confirm scope unless genuinely ambiguous (see Autonomy Principle)
 3. **Surface known context** — check MEMORY.md and project-guidelines.md for gotchas relevant to the systems under test
 4. **Create the blueprint** using the Debug Pipeline Blueprint Template below

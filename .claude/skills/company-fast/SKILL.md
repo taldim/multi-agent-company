@@ -1,7 +1,7 @@
 ---
 name: company-fast
 description: "Fast single-pass pipeline. Plans and executes in one prompt with foreground agents. For small, quick missions. No blueprint file, no journal, no post-review."
-argument-hint: "[task description, e.g. 'fix the monster spawn bug' or 'add sound event for demon teleport']"
+argument-hint: "[task description, e.g. 'fix the login redirect bug' or 'add validation for email field']"
 ---
 
 # Company Fast: $ARGUMENTS

@@ -1,7 +1,7 @@
 ---
 name: company-execute
 description: Autonomous pipeline execution. Can run end-to-end (plan + execute) from a task description, OR execute an existing blueprint from /company-plan or /company-expand. User walks away and comes back to results.
-argument-hint: "[task description OR pipeline ID, e.g. 'fix monster tests' or '2026-03-24-monster-debug' or 'latest']"
+argument-hint: "[task description OR pipeline ID, e.g. 'fix auth tests' or '2026-03-24-auth-debug' or 'latest']"
 ---
 
 # Company Execute: $ARGUMENTS
