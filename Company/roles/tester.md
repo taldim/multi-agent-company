@@ -93,6 +93,25 @@ Integration tests that spawn objects must suppress **all background systems** th
 - Spawner systems that create additional objects not under your control
 - Verify that killing/hiding other actors is truly sufficient — some systems continue running even when the actor is hidden or dead
 
+### 5b. Verify Targeting Isolation After Disabling Actors
+When writing behavior tests that depend on an entity targeting a specific actor (e.g., an AI chasing the closest player), verify that the test infrastructure's kill/disable mechanism actually prevents the targeting system from seeing disabled actors. Many targeting systems use distance-based checks that ignore alive/dead/active status — they scan all registered actors and pick the closest. If the kill mechanism only flags actors as dead or hides their visuals without moving them, a "dead" actor at a closer position will still be selected as the target.
+
+**Before relying on a kill/disable helper, check:**
+1. Does the targeting system filter by alive/active status, or does it scan all actors by distance only?
+2. Does the kill helper reposition the disabled actor, or only change its state?
+3. Does any reset/reposition step (e.g., "reset all actors to spawn positions") run AFTER the kill, potentially placing disabled actors closer to the test subject than intended?
+
+**If the targeting system ignores alive/dead status:** physically move disabled actors far out of range after killing them. Repeat this isolation whenever actors are repositioned during the test (e.g., inside freeze-reposition-unfreeze windows). A kill that only changes state without repositioning is insufficient for distance-based targeting systems.
+
+### 5c. Freeze Before Repositioning in Behavior Tests
+When a test repositions actors (moving a target closer, moving distractors away) while a behavior evaluation loop is running, the evaluation can pick up intermediate state from the mid-reposition frame and select an unintended behavior — potentially with lasting side effects (cooldowns, state flags, one-shot transitions). Always use this sequence:
+1. Freeze/pause the behavior evaluation system
+2. Reposition all relevant actors
+3. Wait for physics to settle (1-2 frames minimum)
+4. Unfreeze/resume behavior evaluation
+
+This applies any time a test changes spatial relationships that drive behavior selection. Skipping the freeze causes flaky tests where the behavior "sometimes picks the wrong state" depending on frame timing.
+
 ### 6. Use APIs That Report Success/Failure
 When triggering an action in a test, use the API overload that returns a success indicator (e.g., a bool), not the void overload that silently fails. If the action silently fails due to cooldown, missing resources, or timing, the test proceeds with stale or missing state and produces confusing downstream errors (null references, zero counts). After triggering, assert the success indicator immediately so failures are diagnosed at the trigger point, not at a downstream assertion.
 

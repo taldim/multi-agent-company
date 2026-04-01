@@ -19,7 +19,8 @@ You have specialized workers you can spawn at any time. Each runs in its own con
 | **Documenter** | Writing/updating GDD, Technical, and Test specification docs |
 | **Tester** | Writing test code (not running tests — that's your job) |
 | **Implementer** | Writing production code to make tests pass |
-| **Debugger** | Diagnosing and fixing compilation errors or test failures |
+| **Debug Loop Agent** | Autonomous debug loop — runs tests, diagnoses, fixes, re-tests until green (via `/company-debug`) |
+| **Debugger** | Single-shot diagnosis of compilation errors (the Debug Loop Agent handles test failures) |
 | **Optimizer** | Post-pipeline: analyzes the pipeline and improves role files |
 | **Visionary** | Post-pipeline: strategic architecture review |
 
@@ -46,7 +47,7 @@ Every worker writes a journal entry to the pipeline's journal folder: `Company/p
 - **Give specific tasks** — "Fix these 3 test failures: {details}" not "handle Phase 2"
 - **Include relevant context** — failures, files modified, design decisions from the blueprint
 - **Background by default** — workers run in background, you get notified when done
-- **Project test tools are a single shared resource** — Only ONE worker can use project test tools at a time (compilation checks, console reads, script operations). Workers that use project test tools: **Tester, Implementer, Debugger**. Workers that DON'T use project test tools: **Documenter, Optimizer, Visionary**. Never spawn two test-tool-using workers in parallel. Non-test-tool workers can run in parallel freely.
+- **Project test tools are a single shared resource** — Only ONE worker can use project test tools at a time (compilation checks, console reads, script operations). Workers that use project test tools: **Tester, Implementer, Debugger, Debug Loop Agent**. Workers that DON'T use project test tools: **Documenter, Optimizer, Visionary**. Never spawn two test-tool-using workers in parallel. Non-test-tool workers can run in parallel freely.
 
 ---
 
@@ -117,42 +118,42 @@ Follow the Pre-Test Cleanup Protocol from project-guidelines.md, then:
 3. Collect all failure messages + read failure diagnostic logs from the location defined in project guidelines
 4. Append results to Execution Log
 
-**Phase 2: Fix Failures — Cluster-First, Single-Test Fallback**
+**Phase 2: Fix Failures — Debug Loop Agent**
 
-Cluster failures by shared error pattern/root cause, then fix using an escalating strategy:
+Dispatch a **Debug Loop Agent** to autonomously fix all failures. The agent runs a tight loop internally (diagnose -> fix -> re-test -> repeat, max 4 iterations) without Manager intervention between iterations.
 
-**Iterations 1-2: Cluster mode**
-- Group failures into clusters that share a root cause
-- Spawn a **Debugger** per cluster (but never two test-tool-using workers in parallel)
-- After each Debugger returns, **verify the full scope** — re-run ALL previously-failing tests, not just the cluster's tests
-- If a cluster fix causes regressions (new failures that didn't exist before), revert and switch that cluster to single-test mode
+**How to dispatch:**
 
-**Iteration 3+: Single-test mode** (fallback when clustering isn't converging)
-- Pick one failing test, give it to a **Debugger** with full context
-- After the fix, run the **entire failing test suite** to verify no regressions
-- Only move to the next test after the current one passes AND no regressions
-- This is slower but prevents cascading damage from wrong diagnoses
+Spawn Agent (foreground):
+```
+"You are the Debug Loop Agent.
+ Read your skill definition at `.claude/skills/company-debug/SKILL.md`.
 
-**When to switch from cluster to single-test:**
-- A cluster fix caused regressions
-- The same cluster has failed 2 iterations without converging
-- The Debugger modified production assets (configuration files, designer-tuned data) — this is a red flag; verify immediately
+ Pipeline ID: {id}
+ Journal folder: Company/project/pipelines/{id}_journal/
+ Journal file number: {N}
 
-**Flaky vs Real Failures:**
-After iteration 2, if a test passes in some runs and fails in others (different results across verification iterations without code changes), classify it as **flaky**:
-- **Flaky tests do NOT count against the 3-iteration budget.** Do not spend debug iterations on tests that sometimes pass.
-- **Log flaky tests** in the Execution Log with the pattern: "Flaky: {TestName} — passed in iteration N, failed in iteration M"
-- **A test is flaky if**: it produces different results across two verification runs with no code changes between them
-- **A test is NOT flaky if**: it fails consistently across all runs — that is a real failure, even if the failure is intermittent in other contexts
+ Test scope: {list of test class names from Phase 1}
+ Failures from Phase 1: {count and summary of failure patterns}
+ Diagnostic log paths: {paths to failure logs}
 
-**Manager Quick-Fix During Verification:**
-When verification reveals failures with an obvious single-value fix (distance adjustment, position tweak) and the Manager has direct diagnostic context from the test output:
-- The Manager MAY apply the fix directly without spawning a Debugger
-- The fix and rationale MUST be logged in the Execution Log
-- This applies ONLY to single-value adjustments where the root cause is already diagnosed
-- Multi-file changes, unclear root causes, or structural changes always go to a Debugger
+ Context: {what the pipeline is about, any relevant design decisions}"
+```
 
-**Max 3 debug iterations total** (cluster iterations + single-test iterations combined).
+**The Debug Loop Agent handles everything internally:**
+- Clustering failures by root cause
+- Deciding when to spawn sub-agents (Tester/Documenter) for ambiguous cases vs fixing obvious issues directly
+- Flaky test detection
+- Escalation when fixes cause regressions or require design changes
+- Re-running the full scope after each fix iteration
+- Broader regression check before declaring victory
+
+**After the Debug Loop Agent returns**, read its structured result:
+- `STATUS: GREEN` — all tests pass. Append result to Execution Log and proceed.
+- `STATUS: ESCALATED` — the agent hit an escalation trigger. Read the reason. Either handle it yourself (if it's within your authority) or escalate to the user.
+- `STATUS: FAILED` — max iterations reached. Escalate to user with the agent's report.
+
+**Why a single agent instead of per-cluster Debuggers?** The Debug Loop Agent maintains full context across iterations — it knows what it tried before, what failed, what the failure logs said. Each separate Debugger dispatch starts fresh, losing iteration context. The tight loop also eliminates the Manager as bottleneck between "fix applied" and "re-run tests."
 
 ### Feature Pipeline
 
@@ -164,7 +165,7 @@ When verification reveals failures with an obvious single-value fix (distance ad
 
 **Phase 3: Implementation** — Spawn **Implementer** to write production code that makes tests pass. Check compilation after.
 
-**Phase 4: Verification** — Run tests yourself following the test execution protocol in project guidelines (same protocol as Debug Phase 1). If failures, spawn **Debugger** (max 3 iterations).
+**Phase 4: Verification** — Run tests yourself following the test execution protocol in project guidelines (same protocol as Debug Phase 1). If failures, dispatch a **Debug Loop Agent** (same as Debug Pipeline Phase 2) with the test scope and failure details.
 
 **Phase 5: Doc Sync** — Spawn **Documenter** in Doc Sync mode to update docs to match actual implementation.
 
@@ -247,23 +248,23 @@ When a sub-plan's tests fail:
 
 1. **Wait for ALL currently-running Sub-Managers to complete** — no parallel work during debug
 2. Collect failure details: error messages + diagnostic logs from the test failure log location defined in project guidelines
-3. Spawn a **Debugger** (foreground):
+3. Dispatch a **Debug Loop Agent** (foreground):
    ```
-   "You are the Debugger.
-    Read your role at `Company/roles/debugger.md`.
-    Read project guidelines at `Company/project/project-guidelines.md`.
+   "You are the Debug Loop Agent.
+    Read your skill definition at `.claude/skills/company-debug/SKILL.md`.
 
-    Sub-plan: {name}
-    Failures: {test names + error messages}
-    Diagnostic logs: {paths}
-    Files modified by sub-plan: {list}
-    Context: {what the sub-plan built}
-
+    Pipeline ID: {id}
     Journal folder: Company/project/pipelines/{id}_journal/
-    Journal file number: {N}"
+    Journal file number: {N}
+
+    Test scope: {sub-plan's test class names}
+    Failures: {test names + error messages}
+    Diagnostic log paths: {paths}
+    Files modified by sub-plan: {list}
+
+    Context: Sub-plan '{name}' — {what the sub-plan built}"
    ```
-4. After Debugger returns → re-run the sub-plan's scoped tests
-5. Max 3 debug iterations per sub-plan, then escalate
+4. Read the agent's structured result. If `STATUS: GREEN`, mark sub-plan as passed. If `STATUS: ESCALATED` or `FAILED`, escalate.
 
 **Why exclusive?** Debug needs clean compilation state, full access to project test tools, and a stable codebase.
 
@@ -283,7 +284,7 @@ Only then proceed to the next wave. Pass forward to the next wave's Sub-Managers
 1. Run the full unit test suite
 2. Run the full integration test suite (no batch filter)
 3. If all pass → proceed to post-pipeline review
-4. If new failures (tests outside any sub-plan's scope) → these are **cross-sub-plan interaction bugs**. Spawn Debugger with context about ALL sub-plans. Max 3 iterations, then escalate.
+4. If new failures (tests outside any sub-plan's scope) → these are **cross-sub-plan interaction bugs**. Dispatch a **Debug Loop Agent** with context about ALL sub-plans. If `STATUS: ESCALATED` or `FAILED`, escalate to user.
 
 #### Expand Finalization
 
@@ -342,7 +343,7 @@ Update the pipeline state file:
 
 ## Escalation Protocol
 
-If after 3 debug iterations a failure can't be fixed with a root-cause fix:
+If after 4 debug iterations a failure can't be fixed with a root-cause fix:
 
 1. **Never apply workarounds** — no skipping tests, no null guards to bypass, no disabling features
 2. Write to the pipeline state file:
@@ -378,7 +379,7 @@ After each phase, append to the Execution Log:
 1. **You are the manager.** You decide which workers to use, how many, and when.
 2. **Workers self-bootstrap.** They read their own role files. **Never** paste role definitions into prompts.
 3. **Run tests yourself** following the test execution protocol in project guidelines — testing is your responsibility, not a worker's.
-4. **Max 3 debug iterations** per failure point.
+4. **Max 4 debug iterations** per failure point (handled by the Debug Loop Agent).
 5. **No workarounds.** Escalate if the only path forward is a hack.
 6. **Adapt to the task.** These phases are guidelines, not a rigid ceremony. A 3-test debug doesn't need the same structure as a 12-module feature. Use judgment.
 7. **Keep the user informed.** Create progress tasks and update pipeline state as you work.

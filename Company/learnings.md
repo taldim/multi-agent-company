@@ -276,3 +276,31 @@ Significant changes the Optimizer flagged for user approval before applying.
 - `company-execute/SKILL.md`: Fixed "prefabs, ScriptableObjects" leak — replaced with generic "configuration files, designer-tuned data".
 
 **Lesson for meta-pipelines:** When a pipeline restructures the pipeline infrastructure itself, the agents performing the work ARE the system being modified. This creates unique risks: (1) agents may read stale versions of files they're actively editing, (2) path references become invalid mid-pipeline as files are moved, and (3) the litmus test for "generic vs project-specific" requires extra vigilance because the agent is simultaneously an instance of the framework AND a user of it. The mitigation is strict wave ordering — audit/split phases first, creation phases second, wiring/verification phases last.
+
+### 2026-03-31 -- 2026-03-31-sound-auto-runner: Clean Pipeline — Guidelines Gap Backfill
+
+**Context:** Zero-debug pipeline (2 roles, 0 failures). Manager identified 2 Guidelines Gaps in the blueprint: no SoundTesting framework context in project-guidelines, no mention of ExpectedSoundEvents metadata pattern.
+
+**Changes applied:**
+- `Company/project/project-guidelines.md`: Added "Sound Testing Framework" section — key files, cross-product expected-sounds pattern, auto-run mode, safe coroutine iteration pattern (`MoveNext()` in `try/catch`), `SoundRegistry.OnSoundPlayed` event hook. Reason: Manager flagged these as Guidelines Gaps; backfilling prevents future pipelines from needing to re-discover this context.
+
+**No generic role file changes.** Pipeline was clean — no failures, no role confusion, no process waste warranting new rules.
+
+### 2026-03-31 -- 2026-03-31-sound-scenario-fixes: Root Cause Hypothesis Verification Pays Off (Again)
+
+**Context:** Zero-debug pipeline. Blueprint's root cause hypothesis was partially wrong (assumed multi-identity metadata would work, but the validation system uses a strict cross-product). Implementer caught this by reading the actual validation code before implementing, exactly as the "Verify the blueprint's root cause hypothesis" rule in implementer.md prescribes.
+
+**Pattern validation:** This is the second pipeline where the implementer.md Rule 4 ("Verify the blueprint's root cause hypothesis") prevented a wasted debug iteration. The rule was added after `2026-03-29-forcestart-migration` and has now proven its value in a different context (test tooling metadata vs. runtime behavior). Confirms the rule is broadly applicable.
+
+**No generic role file changes.** Pipeline was clean. Existing rules worked as intended.
+
+### 2026-03-31 -- 2026-03-31-sound-scenario-not-triggered: Clean Pipeline — Guidelines Gap Backfill
+
+**Context:** Zero-debug pipeline (2 roles, 0 failures). Debugger identified movement gate as root cause for ForceAttack not firing in sound scenarios. Implementer wired 12 sound events across 3 monster base classes using behaviorStartSound pattern + direct SoundRegistry.Play() calls. Blueprint flagged 3 Guidelines Gaps.
+
+**Changes applied:**
+- `Company/project/project-guidelines.md`: Added "ForceAttack Requires Movement Gate Clearing" section — documents the movement gate gotcha for any code that creates ForceFireBehaviour outside PlayMode tests. Reason: Debugger identified this as a general pattern; SoundTestInitializer was the second independent codebase to hit it (after the PlayMode test infrastructure).
+- `Company/project/project-guidelines.md`: Added "behaviorStartSound Pattern" section — documents how to wire walk/behavior-start sounds on monster behaviors, lists which base classes have which sounds wired. Reason: Blueprint flagged as Guidelines Gap; prevents future agents from re-discovering the pattern.
+- `Company/project/project-guidelines.md`: Added "Counter Cooldown Persistence in Sound Scenarios" section — documents counter cooldown persistence and Counter_Fail dual trigger points. Reason: Blueprint flagged as Guidelines Gap.
+
+**No generic role file changes.** Both workers followed their role definitions correctly. Existing rules were sufficient.

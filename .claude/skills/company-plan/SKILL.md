@@ -98,11 +98,9 @@ The user may choose to proceed with `/company-plan` anyway — that's fine. The 
 **Debug Pipeline Phase Template:**
 ```
 Phase 1: Run Tests — Manager runs the scoped tests, identifies all failures
-Phase 2: Diagnose — Debugger with Tester+Documenter agents determines root causes
-Phase 3: Fix — code bugs → Implementer, test bugs → Tester
-Phase 4: Re-verify — run tests again, loop to Phase 2 if still failing (max 3 iterations)
-Phase 5: Doc Sync — update docs if fixes changed behavior
-Phase 6: Review — Optimizer + Visionary
+Phase 2: Debug Loop — Manager dispatches Debug Loop Agent (`/company-debug`) with scope and failures. Agent autonomously loops: diagnose → fix → re-test (max 4 iterations). Returns structured result (GREEN/ESCALATED/FAILED).
+Phase 3: Doc Sync — update docs if fixes changed behavior
+Phase 4: Review — Optimizer + Visionary
 ```
 
 ### CRITICAL RULES FOR THE TOPMANAGER
@@ -199,25 +197,16 @@ Your job is to SCOPE, not EXECUTE. The Manager runs tests, the Debugger diagnose
 - [ ] integration test: {list of test class names}
 - [ ] Collect all failure messages and diagnostic logs
 
-### Phase 2: Diagnose (Debugger + Tester + Documenter)
-- [ ] Cluster failures by error message pattern (systemic vs individual)
-- [ ] For systemic failures: identify the single root cause
-- [ ] For individual failures: trace each to code bug vs test bug
-- [ ] Read diagnostic logs from the location defined in project guidelines
+### Phase 2: Debug Loop (Debug Loop Agent via /company-debug)
+- [ ] Dispatch Debug Loop Agent with scope and failure details
+- [ ] Agent autonomously loops: diagnose → fix → re-test (max 4 iterations)
+- [ ] Agent returns structured result: GREEN / ESCALATED / FAILED
+- [ ] If ESCALATED: Manager reviews reason, handles or escalates to user
 
-### Phase 3: Fix (Implementer for code bugs, Tester for test bugs)
-- [ ] Systemic fixes first (one fix, many tests unblocked)
-- [ ] Individual fixes second
-- [ ] Check compilation after each fix
-
-### Phase 4: Re-verify (Manager)
-- [ ] Re-run all originally-failing tests
-- [ ] If still failing, loop to Phase 2 (max 3 iterations)
-
-### Phase 5: Doc Sync (if fixes changed behavior)
+### Phase 3: Doc Sync (if fixes changed behavior)
 - [ ] Update Technical/GDD docs if code behavior changed
 
-### Phase 6: Review (Optimizer + Visionary)
+### Phase 4: Review (Optimizer + Visionary)
 ```
 
 #### Feature Pipeline (Single-Module)
